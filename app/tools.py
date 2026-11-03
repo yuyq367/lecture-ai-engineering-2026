@@ -91,7 +91,7 @@ def make_quiz(lecture: int) -> str:
     glossary = load_glossary()
     terms = [e for e in glossary if e["lecture"] == lecture]
     if not terms:
-        available = sorted(set(e["lecture"] for e in glossary))
+        available = sorted({e["lecture"] for e in glossary})
         return f"第{lecture}回の確認問題はまだありません。用意されている回: {', '.join(map(str, available))}"
     term = random.choice(terms)
     return json.dumps({
