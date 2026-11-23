@@ -4,6 +4,7 @@
     uv run python -m app.agent "LoRAとQLoRAの違いは？"
     uv run python -m app.agent --trace "LoRAとQLoRAの違いは？"   # ツール呼び出しを表示
     uv run python -m app.agent --graph --trace "LoRAとQLoRAの違いは？"  # 検索からグラフをたどって回答
+    uv run python -m app.agent --neighbors --trace "LoRAとQLoRAの違いは？"  # 検索結果の前後ページも渡す
     uv run python -m app.agent --tree --trace "LoRAとQLoRAの違いは？"  # 目次をたどって回答
     uv run python -m app.agent --full-context --trace "LoRAとQLoRAの違いは？"  # 全資料を一度に渡す
     uv run python -m app.agent --mcp --trace "LoRAとは？"        # 第5回: ツールを MCP サーバーから受け取る
@@ -22,7 +23,7 @@ from contextlib import nullcontext
 from time import perf_counter
 
 from fastmcp import Client
-from pydantic_ai import Agent, DeferredToolRequests, DeferredToolResults, ToolDenied
+from pydantic_ai import Agent, DeferredToolRequests, Tool, DeferredToolResults, ToolDenied
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.mcp import MCPToolset, StdioTransport
 from pydantic_ai.messages import ToolCallPart, ToolReturnPart
@@ -196,6 +197,7 @@ def main() -> None:
     parser.add_argument("--trace", action="store_true", help="ツール呼び出しを表示する")
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--mcp", action="store_true", help="第5回: ツールを MCP サーバー（app/mcp_servers.json）から受け取る")
+    modes.add_argument("--neighbors", action="store_true", help="検索結果に前後ページの本文も付けて答える")
     modes.add_argument("--graph", action="store_true", help="検索結果からグラフをたどり、候補ページを読んで答える")
     modes.add_argument("--tree", action="store_true", help="目次をたどり、必要なページを読んで答える")
     modes.add_argument("--full-context", action="store_true", help="検索せず、lectures.jsonの全資料を一度に渡す")
@@ -206,6 +208,8 @@ def main() -> None:
     mode = nullcontext()
     if args.tree:
         mode = target.override(instructions=TREE_INSTRUCTIONS, tools=[tools.browse_tree])
+    elif args.neighbors:
+        mode = target.override(tools=[Tool(tools.search_materials_with_neighbors, name="search_materials")])
     elif args.graph:
         mode = target.override(instructions=GRAPH_INSTRUCTIONS, tools=[tools.search_graph])
     with mode:
